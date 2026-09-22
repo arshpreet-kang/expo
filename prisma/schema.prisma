@@ -1,0 +1,130 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+model Source {
+  id          String   @id @default(uuid())
+  name        String
+  sourceType  String   // CHANDIGARH_PROCUREMENT, NATIONAL_MARKET, CHANDIGARH_SELLER, USER_QUOTATION
+  url         String?
+  geography   String   // Chandigarh, National
+  createdAt   DateTime @default(now())
+  
+  marketPrices       MarketPrice[]
+  procurementRecords ProcurementRecord[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  model       String
+  category    String   // Laptop, Desktop, Workstation, Server, Display, Networking, Peripheral, IT_Service
+  brand       String
+  processor   String?
+  ram         String?
+  storage     String?
+  gpu         String?
+  screenSize  String?
+  os          String?
+  warranty    String?  // e.g. "3 Years Onsite"
+  specsJson   String?  // Additional key-value specifications
+  createdAt   DateTime @default(now())
+  
+  marketPrices MarketPrice[]
+}
+
+model MarketPrice {
+  id             String   @id @default(uuid())
+  productId      String
+  sourceId       String
+  price          Float
+  currency       String   @default("INR")
+  geography      String   @default("Chandigarh") // Chandigarh, National
+  collectionDate String   // e.g. "21 Sep 2026"
+  availability   String   @default("In Stock")
+  warranty       String?
+  createdAt      DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source  Source  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model ProcurementRecord {
+  id             String   @id @default(uuid())
+  tenderId       String   @unique
+  organization   String   // e.g. "Panjab University, Chandigarh", "PEC Chandigarh", "Chandigarh Admin"
+  item           String
+  category       String
+  quantity       Int
+  specifications String
+  tenderDate     String   // e.g. "15 Sep 2026"
+  location       String   @default("Chandigarh")
+  sourceId       String?
+  sourceUrl      String?
+  documentRef    String?
+  createdAt      DateTime @default(now())
+
+  source Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+}
+
+model VendorQuotation {
+  id            String   @id @default(uuid())
+  vendorName    String
+  quotationDate String
+  documentName  String?
+  totalPrice    Float
+  gstAmount     Float    @default(0)
+  warrantyYears Int      @default(3)
+  amcDetails    String?
+  otherCharges  Float    @default(0)
+  createdAt     DateTime @default(now())
+
+  items QuotationItem[]
+}
+
+model QuotationItem {
+  id          String @id @default(uuid())
+  quotationId String
+  productName String
+  model       String?
+  quantity    Int
+  unitPrice   Float
+  gstPercent  Float  @default(18)
+  totalAmount Float
+  specs       String?
+
+  quotation VendorQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+}
+
+model Requirement {
+  id        String   @id @default(uuid())
+  rawInput  String
+  quantity  Int      @default(1)
+  category  String   @default("Laptop")
+  purpose   String?
+  ram       String?
+  storage   String?
+  processor String?
+  gpu       String?
+  warranty  String?
+  location  String   @default("Chandigarh")
+  createdAt DateTime @default(now())
+}
+
+model ProcurementReport {
+  id            String   @id @default(uuid())
+  title         String
+  organization  String
+  requirementId String?
+  budgetMin     Float
+  budgetMax     Float
+  tcoTotal      Float
+  reportJson    String
+  createdAt     DateTime @default(now())
+}
